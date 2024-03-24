@@ -17,7 +17,7 @@ class Move(NamedTuple):
     label: str = ""
 
 
-BOARD_SIZE = 3
+BOARD_SIZE = 5
 DEFAULT_PLAYERS = (
     Player(label="X", color="blue"),
     Player(label="O", color="green"),
@@ -72,16 +72,6 @@ class TicTacToeGame:
                 self.winner_combo = combo
                 self._winner = player
                 break
-    
-    def getWinner(self, move):
-        """Process the current move and check if it's a win."""
-        row, col, player = move.row, move.col, move.label
-        self._current_moves[row][col] = move
-        for combo in self._winning_combos:
-            results = set(self._current_moves[n][m].label for n, m in combo)
-            is_win = (len(results) == 1) and ("" not in results)
-            if is_win:
-                return player
 
     def has_winner(self):
         """Return True if the game has a winner, and False otherwise."""
@@ -126,12 +116,15 @@ class TicTacToeGame:
 
     def minimax(self, is_maximizing, alpha, beta, depth):
         winner = self.get_winner()
-        if winner == "X":
-            return -10 + depth
-        elif winner == "Y":
-            return 10 - depth
-        elif winner == "TIE":
-            return 0
+        if depth == 3 or winner is not None:
+            if winner == "X":
+                return -10
+            elif winner == "O":
+                return 10
+            elif winner == "TIE":
+                return 0
+            else:
+                return self.heuristic_evaluation()
 
         if is_maximizing:
             best_score = -float("inf")
@@ -161,6 +154,26 @@ class TicTacToeGame:
                         if beta <= alpha:
                             break
             return best_score
+        
+    def heuristic_evaluation(self):
+        player_score = 0
+        opponent_score = 0
+
+        for combo in self._winning_combos:
+            player_in_combo = any(self._current_moves[r][c].label == "O" for r, c in combo)
+            opponent_in_combo = any(self._current_moves[r][c].label == "X" for r, c in combo)
+
+            if not player_in_combo and not opponent_in_combo:
+                # If the line is still open for both players, don't count it
+                continue
+            elif player_in_combo and not opponent_in_combo:
+                # Line is open for the AI player
+                player_score += 1
+            elif opponent_in_combo and not player_in_combo:
+                # Line is open for the opponent
+                opponent_score += 1
+
+        return player_score - opponent_score
 
 
     def get_winner(self):
