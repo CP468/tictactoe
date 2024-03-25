@@ -17,7 +17,7 @@ class Move(NamedTuple):
     label: str = ""
 
 
-BOARD_SIZE = 3
+BOARD_SIZE = 4
 DEFAULT_PLAYERS = (
     Player(label="X", color="blue"),
     Player(label="O", color="green"),
@@ -116,11 +116,11 @@ class TicTacToeGame:
 
     def minimax(self, is_maximizing, alpha, beta, depth):
         winner = self.get_winner()
-        if depth == 3 or winner is not None:
+        if depth == 10 - BOARD_SIZE*2 or winner is not None:
             if winner == "X":
-                return -10
+                return -10+depth
             elif winner == "O":
-                return 10
+                return 10-depth
             elif winner == "TIE":
                 return 0
             else:
@@ -309,6 +309,7 @@ class TicTacToeBoard(tk.Tk):
         """Reset the game's board to play again."""
         self._game.reset_game()
         self._update_display(msg="Ready?")
+        self._game.toggle_player()
         for button in self._cells.keys():
             button.config(highlightbackground="lightblue")
             button.config(text="")
