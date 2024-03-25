@@ -17,7 +17,7 @@ class Move(NamedTuple):
     label: str = ""
 
 
-BOARD_SIZE = 4
+BOARD_SIZE = 3
 DEFAULT_PLAYERS = (
     Player(label="X", color="blue"),
     Player(label="O", color="green"),
@@ -32,7 +32,6 @@ class TicTacToeGame:
         self.winner_combo = []
         self._current_moves = []
         self._has_winner = False
-        self._winner = ""
         self._winning_combos = []
         self._setup_board()
 
@@ -60,19 +59,6 @@ class TicTacToeGame:
         no_winner = not self._has_winner
         return no_winner and move_was_not_played
 
-    def process_move(self, move):
-        """Process the current move and check if it's a win."""
-        row, col, player = move.row, move.col, move.label
-        self._current_moves[row][col] = move
-        for combo in self._winning_combos:
-            results = set(self._current_moves[n][m].label for n, m in combo)
-            is_win = (len(results) == 1) and ("" not in results)
-            if is_win:
-                self._has_winner = True
-                self.winner_combo = combo
-                self._winner = player
-                break
-
     def has_winner(self):
         """Return True if the game has a winner, and False otherwise."""
         return self._has_winner
@@ -97,15 +83,16 @@ class TicTacToeGame:
         self._has_winner = False
         self.winner_combo = []
         
-    def ai(self):
+    def ai(self, cells_left):
         best_score = -float("inf")
         best_move = None
+        max_cells = self.board_size**2
 
         for row in range(self.board_size):
             for col in range(self.board_size):
                 if self._current_moves[row][col].label == "":
                     self._current_moves[row][col] = Move(row, col, "O")  # Simulate move for AI
-                    score = self.minimax(False, -float("inf"), float("inf"), 0)
+                    score = self.minimax(False, -float("inf"), float("inf"),2 + int(((max_cells - cells_left) / max_cells) * 2) )
                     self._current_moves[row][col] = Move(row, col)  # Undo move
 
                     if score > best_score:
@@ -114,9 +101,10 @@ class TicTacToeGame:
 
         return best_move
 
-    def minimax(self, is_maximizing, alpha, beta, depth):
+    def minimax(self, is_maximizing, alpha, beta, max_depth, depth=0):
         winner = self.get_winner()
-        if depth == 10 - BOARD_SIZE*2 or winner is not None:
+        # if depth == 6 or winner is not None:
+        if max_depth == depth or winner is not None:
             if winner == "X":
                 return -10+depth
             elif winner == "O":
@@ -132,7 +120,7 @@ class TicTacToeGame:
                 for col in range(self.board_size):
                     if self._current_moves[row][col].label == "":
                         self._current_moves[row][col] = Move(row, col, "O")  # Simulate move for AI
-                        score = self.minimax(False, alpha, beta, depth + 1)
+                        score = self.minimax(False, alpha, beta, max_depth, depth + 1)
                         self._current_moves[row][col] = Move(row, col)  # Undo move
 
                         best_score = max(best_score, score)
@@ -146,7 +134,7 @@ class TicTacToeGame:
                 for col in range(self.board_size):
                     if self._current_moves[row][col].label == "":
                         self._current_moves[row][col] = Move(row, col, "X")  # Simulate move for opponent
-                        score = self.minimax(True, alpha, beta, depth + 1)
+                        score = self.minimax(True, alpha, beta, max_depth, depth + 1)
                         self._current_moves[row][col] = Move(row, col)  # Undo move
 
                         best_score = min(best_score, score)
@@ -190,10 +178,11 @@ class TicTacToeGame:
 
 
 class TicTacToeBoard(tk.Tk):
-    def __init__(self, game):
+    def __init__(self, game, board_size):
         super().__init__()
         self.title("Tic-Tac-Toe Game")
         self._cells = {}
+        self._cells_left = board_size**2
         self._buttons = {}
         self._game = game
         self._create_menu()
@@ -252,18 +241,17 @@ class TicTacToeBoard(tk.Tk):
 
         # Update the board and check the game state
         self._update_button(clicked_btn, self._game.current_player.label, self._game.current_player.color)
-        self._game.process_move(move)
+        self._game._current_moves[row][col] = move  
         winner = self._game.get_winner()
+        self._cells_left -= 1
 
         if winner:
             self._handle_game_end(winner)
         else:
             self._game.toggle_player()
             self._update_display(f"{self._game.current_player.label}'s turn")
-
-            # If it's AI's turn, make the AI move
-            if self._game.current_player.label == "O":
-                self._handle_ai_move()
+            self._handle_ai_move()
+            self._cells_left -= 1
 
     def _update_button(self, button, label, color):
         """Update the button text and disable it."""
@@ -282,15 +270,16 @@ class TicTacToeBoard(tk.Tk):
 
     def _handle_ai_move(self):
         """Handle the AI move."""
-        row, col = self._game.ai()
+        row, col = self._game.ai(self._cells_left)
         move = Move(row, col, "O")
         
         self._update_button(self._buttons[(row, col)], self._game.current_player.label, self._game.current_player.color)
-        self._game.process_move(move)
+        self._game._current_moves[row][col] = move  
         
         winner = self._game.get_winner()
         if winner:
             self._handle_game_end(winner)
+            self._game._has_winner = True
         else:
             self._game.toggle_player()
             self._update_display(f"{self._game.current_player.label}'s turn")
@@ -310,6 +299,7 @@ class TicTacToeBoard(tk.Tk):
         self._game.reset_game()
         self._update_display(msg="Ready?")
         self._game.toggle_player()
+        self._cells_left = board_size**2
         for button in self._cells.keys():
             button.config(highlightbackground="lightblue")
             button.config(text="")
@@ -318,8 +308,9 @@ class TicTacToeBoard(tk.Tk):
 
 def main():
     """Create the game's board and run its main loop."""
-    game = TicTacToeGame()
-    board = TicTacToeBoard(game)
+    size = 5
+    game = TicTacToeGame(board_size=size)
+    board = TicTacToeBoard(game,board_size=size)
     board.mainloop()
 
 
