@@ -17,7 +17,7 @@ class Move(NamedTuple):
     label: str = ""
 
 
-BOARD_SIZE = 5
+BOARD_SIZE = 3
 DEFAULT_PLAYERS = (
     Player(label="X", color="blue"),
     Player(label="O", color="green"),
@@ -245,38 +245,56 @@ class TicTacToeBoard(tk.Tk):
         clicked_btn = event.widget
         row, col = self._cells[clicked_btn]
         move = Move(row, col, self._game.current_player.label)
-        if self._game.is_valid_move(move):
-            self._update_button(clicked_btn)
-            self._game.process_move(move)
-            if self._game.is_tied():
-                self._update_display(msg="Tied game!", color="red")
-            elif self._game.has_winner():
-                self._highlight_cells()
-                msg = f'Player "{self._game.current_player.label}" won!'
-                color = self._game.current_player.color
-                self._update_display(msg, color)
-            else:
-                self._game.toggle_player()
-                row, col = self._game.ai()
-                move = Move(row, col, "O")
-                self._update_button(self._buttons[(row, col)])
-                self._game.process_move(move)
-                
-                if self._game.is_tied():
-                    self._update_display(msg="Tied game!", color="red")
-                elif self._game.has_winner():
-                    self._highlight_cells()
-                    msg = f'Player "{self._game.current_player.label}" won!'
-                    color = self._game.current_player.color
-                    self._update_display(msg, color)
-                else:
-                    self._game.toggle_player()
-                    self._update_display(f"{self._game.current_player.label}'s turn")
 
+        # Exit if the move is not valid
+        if not self._game.is_valid_move(move):
+            return 
 
-    def _update_button(self, clicked_btn):
-        clicked_btn.config(text=self._game.current_player.label)
-        clicked_btn.config(fg=self._game.current_player.color)
+        # Update the board and check the game state
+        self._update_button(clicked_btn, self._game.current_player.label, self._game.current_player.color)
+        self._game.process_move(move)
+        winner = self._game.get_winner()
+
+        if winner:
+            self._handle_game_end(winner)
+        else:
+            self._game.toggle_player()
+            self._update_display(f"{self._game.current_player.label}'s turn")
+
+            # If it's AI's turn, make the AI move
+            if self._game.current_player.label == "O":
+                self._handle_ai_move()
+
+    def _update_button(self, button, label, color):
+        """Update the button text and disable it."""
+        button.config(text=label)
+        button.config(fg=color)
+
+    def _handle_game_end(self, winner):
+        """Handle the end of the game, whether win or tie."""
+        if winner == "TIE":
+            self._update_display(msg="Tied game!", color="red")
+        else:
+            self._highlight_cells()
+            msg = f'Player "{winner}" won!'
+            color = "red" if winner == "X" else "green"
+            self._update_display(msg, color)
+
+    def _handle_ai_move(self):
+        """Handle the AI move."""
+        row, col = self._game.ai()
+        move = Move(row, col, "O")
+        
+        self._update_button(self._buttons[(row, col)], self._game.current_player.label, self._game.current_player.color)
+        self._game.process_move(move)
+        
+        winner = self._game.get_winner()
+        if winner:
+            self._handle_game_end(winner)
+        else:
+            self._game.toggle_player()
+            self._update_display(f"{self._game.current_player.label}'s turn")
+
 
     def _update_display(self, msg, color="black"):
         self.display["text"] = msg
@@ -291,7 +309,6 @@ class TicTacToeBoard(tk.Tk):
         """Reset the game's board to play again."""
         self._game.reset_game()
         self._update_display(msg="Ready?")
-        self._game.toggle_player()
         for button in self._cells.keys():
             button.config(highlightbackground="lightblue")
             button.config(text="")
