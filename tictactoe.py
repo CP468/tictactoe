@@ -298,8 +298,9 @@ class TicTacToeBoard(tk.Tk):
         """Reset the game's board to play again."""
         self._game.reset_game()
         self._update_display(msg="Ready?")
-        self._game.toggle_player()
-        self._cells_left = board_size**2
+        if(self._game.current_player.label == "O"):
+            self._game.toggle_player()
+        self._cells_left = self._game.board_size**2
         for button in self._cells.keys():
             button.config(highlightbackground="lightblue")
             button.config(text="")
@@ -308,7 +309,7 @@ class TicTacToeBoard(tk.Tk):
 
 def main():
     """Create the game's board and run its main loop."""
-    size = 5
+    size = 3
     game = TicTacToeGame(board_size=size)
     board = TicTacToeBoard(game,board_size=size)
     board.mainloop()
