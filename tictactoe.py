@@ -63,14 +63,6 @@ class TicTacToeGame:
         """Return True if the game has a winner, and False otherwise."""
         return self._has_winner
 
-    def is_tied(self):
-        """Return True if the game is tied, and False otherwise."""
-        no_winner = not self._has_winner
-        played_moves = (
-            move.label for row in self._current_moves for move in row
-        )
-        return no_winner and all(played_moves)
-
     def toggle_player(self):
         """Return a toggled player."""
         self.current_player = next(self._players)
@@ -102,8 +94,7 @@ class TicTacToeGame:
         return best_move
 
     def minimax(self, is_maximizing, alpha, beta, max_depth, depth=0):
-        winner = self.get_winner()
-        # if depth == 6 or winner is not None:
+        winner, _ = self.get_winner()
         if max_depth == depth or winner is not None:
             if winner == "X":
                 return -10+depth
@@ -151,11 +142,11 @@ class TicTacToeGame:
             player_in_combo = any(self._current_moves[r][c].label == "O" for r, c in combo)
             opponent_in_combo = any(self._current_moves[r][c].label == "X" for r, c in combo)
             
+            # Line is open for the AI player
             if player_in_combo and not opponent_in_combo:
-                # Line is open for the AI player
                 player_score += 1
+            # Line is open for the opponent
             elif opponent_in_combo and not player_in_combo:
-                # Line is open for the opponent
                 opponent_score += 1
 
         return player_score - opponent_score
@@ -165,16 +156,16 @@ class TicTacToeGame:
         # Check for a winner
         for combo in self._winning_combos:
             if all(self._current_moves[n][m].label == "X" for n, m in combo):
-                return "X"
+                return "X",combo
             if all(self._current_moves[n][m].label == "O" for n, m in combo):
-                return "Y" 
+                return "Y", combo
 
         # Check for a tie if no winner
         if all(move.label for row in self._current_moves for move in row):
-            return "TIE"
+            return "TIE", []
 
         # No winner and no tie means the game is still in progress
-        return None        
+        return None, []        
 
 
 class TicTacToeBoard(tk.Tk):
@@ -242,11 +233,11 @@ class TicTacToeBoard(tk.Tk):
         # Update the board and check the game state
         self._update_button(clicked_btn, self._game.current_player.label, self._game.current_player.color)
         self._game._current_moves[row][col] = move  
-        winner = self._game.get_winner()
+        winner, winner_combo = self._game.get_winner()
         self._cells_left -= 1
 
         if winner:
-            self._handle_game_end(winner)
+            self._handle_game_end(winner, winner_combo)
         else:
             self._game.toggle_player()
             self._update_display(f"{self._game.current_player.label}'s turn")
@@ -258,12 +249,13 @@ class TicTacToeBoard(tk.Tk):
         button.config(text=label)
         button.config(fg=color)
 
-    def _handle_game_end(self, winner):
+    def _handle_game_end(self, winner, winner_combo):
         """Handle the end of the game, whether win or tie."""
         if winner == "TIE":
             self._update_display(msg="Tied game!", color="red")
         else:
-            self._highlight_cells()
+            self._game._has_winner = True
+            self._highlight_cells(winner_combo)
             msg = f'Player "{winner}" won!'
             color = "red" if winner == "X" else "green"
             self._update_display(msg, color)
@@ -276,10 +268,9 @@ class TicTacToeBoard(tk.Tk):
         self._update_button(self._buttons[(row, col)], self._game.current_player.label, self._game.current_player.color)
         self._game._current_moves[row][col] = move  
         
-        winner = self._game.get_winner()
+        winner, winner_combo = self._game.get_winner()
         if winner:
-            self._handle_game_end(winner)
-            self._game._has_winner = True
+            self._handle_game_end(winner, winner_combo)
         else:
             self._game.toggle_player()
             self._update_display(f"{self._game.current_player.label}'s turn")
@@ -289,9 +280,9 @@ class TicTacToeBoard(tk.Tk):
         self.display["text"] = msg
         self.display["fg"] = color
 
-    def _highlight_cells(self):
+    def _highlight_cells(self, winner_combo):
         for button, coordinates in self._cells.items():
-            if coordinates in self._game.winner_combo:
+            if coordinates in winner_combo:
                 button.config(highlightbackground="red")
 
     def reset_board(self):
