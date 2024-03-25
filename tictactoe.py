@@ -162,11 +162,8 @@ class TicTacToeGame:
         for combo in self._winning_combos:
             player_in_combo = any(self._current_moves[r][c].label == "O" for r, c in combo)
             opponent_in_combo = any(self._current_moves[r][c].label == "X" for r, c in combo)
-
-            if not player_in_combo and not opponent_in_combo:
-                # If the line is still open for both players, don't count it
-                continue
-            elif player_in_combo and not opponent_in_combo:
+            
+            if player_in_combo and not opponent_in_combo:
                 # Line is open for the AI player
                 player_score += 1
             elif opponent_in_combo and not player_in_combo:
@@ -182,7 +179,7 @@ class TicTacToeGame:
             if all(self._current_moves[n][m].label == "X" for n, m in combo):
                 return "X"
             if all(self._current_moves[n][m].label == "O" for n, m in combo):
-                return "Y"  # Assuming you want to return "Y" instead of "O"
+                return "Y" 
 
         # Check for a tie if no winner
         if all(move.label for row in self._current_moves for move in row):
@@ -243,29 +240,6 @@ class TicTacToeBoard(tk.Tk):
                 button.bind("<ButtonPress-1>", self.play)
                 button.grid(row=row, column=col, padx=5, pady=5, sticky="nsew")
 
-    # def play(self, event):
-    #     """Handle a player's move."""
-    #     clicked_btn = event.widget
-    #     row, col = self._cells[clicked_btn]
-    #     move = Move(row, col, self._game.current_player.label)
-    #     if self._game.is_valid_move(move):
-    #         self._update_button(clicked_btn)
-    #         self._game.process_move(move)
-    #         if self._game.is_tied():
-    #             self._update_display(msg="Tied game!", color="red")
-    #         elif self._game.has_winner():
-    #             self._highlight_cells()
-    #             msg = f'Player "{self._game.current_player.label}" won!'
-    #             color = self._game.current_player.color
-    #             self._update_display(msg, color)
-    #         else:
-    #             self._game.toggle_player()
-    #             msg = f"{self._game.current_player.label}'s turn"
-    #             (row, col) = self._game.ai(move)
-    #             self._update_button(self._buttons[(row, col)])
-    #             self._update_display(msg)
-    #             self._game.toggle_player()
-    #             self._update_display(msg)
     def play(self, event):
         """Handle a player's move."""
         clicked_btn = event.widget
